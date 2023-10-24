@@ -35,7 +35,7 @@ def add_statcast_data_to_big_query(game_date: date) -> bool:
         return True
     return False
 
-class queries(big_query_utils.DB):
+class queries:
     existing_game_dates = '''
         SELECT
             DISTINCT game_date
@@ -67,6 +67,25 @@ class queries(big_query_utils.DB):
             UNION ALL
         '''
     duplicate_rows = duplicate_rows[:-25] # Drop last UNION ALL
+
+    def full_statcast_data(start_date: date, end_date: date):
+        return f'''
+            SELECT
+                *
+            FROM
+                `mlb.statcast_games` games
+            JOIN
+                `mlb.statcast_at_bats` at_bats
+            USING
+                (game_pk)
+            JOIN
+                `mlb.statcast_pitches` pitches
+            USING
+                (game_pk, at_bat_number)
+            WHERE
+                game_date >= TIMESTAMP("{start_date.strftime('%Y-%m-%d')}") AND
+                game_date <= TIMESTAMP("{end_date.strftime('%Y-%m-%d')}")
+        '''
 
 statcast_drop_columns = ['spin_dir', 'spin_rate_deprecated', 'break_angle_deprecated', 'break_length_deprecated', 'tfs_deprecated',
                          'tfs_zulu_deprecated', 'umpire', 'sv_id', 'pitcher.1', 'fielder_2.1']
