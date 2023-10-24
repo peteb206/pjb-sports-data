@@ -1,7 +1,7 @@
 name: daily
 on:
    schedule:
-      - cron: '0 12 * 3-10 *' # https://crontab.guru
+      - cron: '0 12 * 3-11 *' # https://crontab.guru
    workflow_dispatch:
 jobs:
    build:
