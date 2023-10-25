@@ -22,3 +22,34 @@ def add_df_rows_to_table(table: str, df: pd.DataFrame):
 # ------------------------------------------------------------------------------------------------ #
 # ------------------------------------------------------------------------------------------------ #
 # ------------------------------------------------------------------------------------------------ #
+
+def duplicate_rows_check():
+    table_primary_keys = {
+        'mlb.statcast_games': ['game_pk'],
+        'mlb.statcast_at_bats': ['game_pk', 'at_bat_number'],
+        'mlb.statcast_pitches': ['game_pk', 'at_bat_number', 'pitch_number'],
+        'mlb.fangraphs_injuries': ['playerId', 'season', 'date', 'injurySurgery']
+    }
+    query_str_list = list()
+    for table_name, keys in table_primary_keys.items():
+        query_str_list.append(f'''
+            SELECT
+                "{table_name}" AS table_name,
+                COUNT(*) AS duplicate_rows
+            FROM
+                (
+                    SELECT
+                        0 AS a
+                    FROM
+                        `{table_name}`
+                    GROUP BY
+                        {','.join(keys)}
+                    HAVING
+                        COUNT(*) > 1
+                )
+        ''')
+    query_str = ' UNION ALL '.join(query_str_list)
+    duplicate_rows_df = query_to_df(query_str)
+    print(duplicate_rows_df)
+    if duplicate_rows_df.duplicate_rows.any():
+        raise Exception('There are duplicate entries in the "mlb" dataset. Check the printed dataframe for more information.')
