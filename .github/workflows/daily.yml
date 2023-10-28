@@ -12,7 +12,7 @@ jobs:
          -  name: setup python
             uses: actions/setup-python@v2
             with:
-               python-version: '3.11.4' # install the python version needed
+               python-version: '3.11.5' # install the python version needed
                cache: 'pip' # caching pip dependencies
          -  name: install python packages
             run: |

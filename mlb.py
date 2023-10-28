@@ -1,4 +1,4 @@
-import big_query_utils
+from big_query_utils import add_df_rows_to_table, query_to_df, queries
 from pybaseball import statcast
 from datetime import datetime, date
 import time
@@ -21,20 +21,20 @@ def add_statcast_data_to_big_query(game_date: date) -> bool:
         pitches_df.game_date = pitches_df.game_date.apply(lambda x: x.date())
         games_df = pitches_df.loc[:, statcast_game_columns].drop_duplicates('game_pk')
         if len(games_df.index) > 0:
-            big_query_utils.add_df_rows_to_table('mlb.statcast_games', games_df)
+            add_df_rows_to_table('mlb.statcast_games', games_df)
 
         at_bats_df = pitches_df \
             .sort_values(['game_pk', 'at_bat_number', 'pitch_number']) \
                 .loc[:, statcast_at_bat_columns] \
                     .drop_duplicates(['game_pk', 'at_bat_number'], keep = 'last')
         if len(at_bats_df.index) > 0:
-            big_query_utils.add_df_rows_to_table('mlb.statcast_at_bats', at_bats_df)
+            add_df_rows_to_table('mlb.statcast_at_bats', at_bats_df)
 
         pitches_df.drop(
             [col for col in statcast_game_columns + statcast_at_bat_columns + statcast_drop_columns if col not in ['game_pk', 'at_bat_number']],
             axis = 1, inplace = True
         )
-        big_query_utils.add_df_rows_to_table('mlb.statcast_pitches', pitches_df)
+        add_df_rows_to_table('mlb.statcast_pitches', pitches_df)
         print(f'Added the statcast data for {game_date_str} to BigQuery in {time.perf_counter() - data_fetch_end_time:0.2f} seconds')
         return True
     return False
@@ -61,43 +61,9 @@ def update_injury_data_in_big_query():
     injuries_df.loaddate = pd.to_datetime(injuries_df.loaddate)
     for col in ['date', 'retrodate', 'eligibledate', 'returndate']:
         injuries_df[col] = injuries_df[col].apply(lambda x: datetime.strptime(x, '%m/%d/%y').date() if x not in ['', None] else None)
-    big_query_utils.query_to_df(queries.clear_fangraphs_injuries)
-    big_query_utils.add_df_rows_to_table('mlb.fangraphs_injuries', injuries_df)
+    query_to_df(queries.clear_fangraphs_injuries)
+    add_df_rows_to_table('mlb.fangraphs_injuries', injuries_df)
     print(f'Updated the injury data in BigQuery in {time.perf_counter() - data_fetch_start_time:0.2f} seconds')
-
-class queries:
-    existing_game_dates = '''
-        SELECT
-            DISTINCT game_date
-        FROM
-            `mlb.statcast_games`
-    '''
-
-    clear_fangraphs_injuries = '''
-        DELETE
-        FROM
-            `mlb.fangraphs_injuries`
-        WHERE
-            true
-    '''
-
-    def full_statcast_data(start_date: date, end_date: date):
-        return f'''
-            SELECT
-                *
-            FROM
-                `mlb.statcast_games` games
-            JOIN
-                `mlb.statcast_at_bats` at_bats
-            USING
-                (game_pk)
-            JOIN
-                `mlb.statcast_pitches` pitches
-            USING
-                (game_pk, at_bat_number)
-            WHERE
-                game_date >= "{start_date.strftime('%Y-%m-%d')}" AND game_date <= "{end_date.strftime('%Y-%m-%d')}"
-        '''
 
 statcast_drop_columns = ['spin_dir', 'spin_rate_deprecated', 'break_angle_deprecated', 'break_length_deprecated', 'tfs_deprecated',
                          'tfs_zulu_deprecated', 'umpire', 'sv_id', 'pitcher.1', 'fielder_2.1']
