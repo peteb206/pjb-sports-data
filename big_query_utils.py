@@ -26,7 +26,9 @@ def query_to_df(query: str):
     return pd.read_gbq(query, project_id = credentials.project_id, dialect = 'standard', credentials = credentials)
 
 def add_df_rows_to_table(table: str, df: pd.DataFrame):
-    df.to_gbq(table, project_id = credentials.project_id, if_exists = 'append', credentials = credentials)
+    if len(df.index) > 0:
+        df.columns = [col.replace('.', '_') for col in df.columns]
+        df.to_gbq(table, project_id = credentials.project_id, if_exists = 'append', credentials = credentials)
 # ------------------------------------------------------------------------------------------------ #
 # ------------------------------------------------------------------------------------------------ #
 # ------------------------------------------------------------------------------------------------ #
@@ -35,8 +37,6 @@ def add_df_rows_to_table(table: str, df: pd.DataFrame):
 # -------------------------------------------- Tables -------------------------------------------- #
 # ------------------------------------------------------------------------------------------------ #
 table_primary_keys = {
-    'mlb.statcast_games': ['game_pk'],
-    'mlb.statcast_at_bats': ['game_pk', 'at_bat_number'],
     'mlb.statcast_pitches': ['game_pk', 'at_bat_number', 'pitch_number'],
     'mlb.fangraphs_injuries': ['playerId', 'season', 'date', 'injurySurgery']
 }
@@ -74,13 +74,9 @@ class queries:
             game_year Year,
             COUNT(*) `Big Query Pitches`
         FROM
-            `mlb.statcast_games` games
-        JOIN
-            `mlb.statcast_pitches` pitches
-        ON
-            games.game_pk = pitches.game_pk
+            `mlb.statcast_pitches`
         WHERE
-            games.game_type = "R"
+            game_type = "R"
         GROUP BY
             game_year
     '''
@@ -98,7 +94,7 @@ class queries:
             SELECT
                 DISTINCT game_date
             FROM
-                `mlb.statcast_games`
+                `mlb.statcast_pitches`
             {where_clause}
             ORDER BY
                 game_date
@@ -112,20 +108,12 @@ class queries:
             true
     '''
 
-    def full_statcast_data(start_date: date, end_date: date):
+    def statcast(start_date: date, end_date: date):
         return f'''
             SELECT
                 *
             FROM
-                `mlb.statcast_games` games
-            JOIN
-                `mlb.statcast_at_bats` at_bats
-            USING
-                (game_pk)
-            JOIN
                 `mlb.statcast_pitches` pitches
-            USING
-                (game_pk, at_bat_number)
             WHERE
                 game_date >= "{start_date.strftime('%Y-%m-%d')}" AND game_date <= "{end_date.strftime('%Y-%m-%d')}"
         '''
