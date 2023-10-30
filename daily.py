@@ -1,7 +1,7 @@
 import mlb
 import big_query_utils
 from datetime import date, timedelta
-from tests import test
+from tests import daily_tests
 
 if __name__ == '__main__':
     today = date.today()
@@ -14,4 +14,4 @@ if __name__ == '__main__':
     mlb.update_injury_data_in_big_query()
 
     # Tests
-    test()
+    daily_tests()
