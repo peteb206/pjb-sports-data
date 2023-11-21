@@ -15,9 +15,10 @@ def add_statcast_data_to_big_query(game_date: date):
     pitches_df = statcast(start_dt = game_date_str, end_dt = game_date_str)
     data_fetch_end_time = time.perf_counter()
     print(f'Downloaded the statcast data for {game_date_str} in {data_fetch_end_time - data_fetch_start_time:0.2f} seconds')
-    pitches_df.game_date = pitches_df.game_date.apply(lambda x: x.date())
-    add_df_rows_to_table('mlb.statcast_pitches', pitches_df)
-    print(f'Added the statcast data for {game_date_str} to BigQuery in {time.perf_counter() - data_fetch_end_time:0.2f} seconds')
+    if (len(pitches_df.index) > 0) & ('game_date' in pitches_df.columns):
+        pitches_df.game_date = pitches_df.game_date.apply(lambda x: x.date())
+        add_df_rows_to_table('mlb.statcast_pitches', pitches_df)
+        print(f'Added the statcast data for {game_date_str} to BigQuery in {time.perf_counter() - data_fetch_end_time:0.2f} seconds')
 
 def update_injury_data_in_big_query():
     '''
